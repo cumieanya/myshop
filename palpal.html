@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Shop</title>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --serenity: #F5569B; /* Rose */
+    --custard: #FFCBEB; /* Fairy Tale */
+    --pure-light: #FFF5FB;
+    --white: #ffffff;
+    --dark: #1355b2; /* Sapphire */
+    --success: #6BCB77;
+    --candy-blue: #1355b2;
+    --candy-yellow: #FFCBEB;
+}
+
+/* Animations */
+@keyframes popIn {
+    0% { transform: scale(0.9); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+@keyframes successPulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(107, 203, 119, 0.7); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(107, 203, 119, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(107, 203, 119, 0); }
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+@keyframes spin {
+    100% { transform: rotate(360deg); }
+}
+@keyframes sparklePop {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(2); opacity: 0; }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+
+body {
+    font-family: 'Fredoka', sans-serif;
+    background-color: var(--custard);
+    background-image: radial-gradient(#F5569B 1px, transparent 1px);
+    background-size: 20px 20px;
+    margin: 0;
+    padding: 15px;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    color: var(--dark);
+}
+
+.container {
+    background: var(--pure-light);
+    padding: 2rem;
+    border-radius: 50px;
+    box-shadow: 0px 15px 0px #F5569B, 0px 20px 30px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 500px;
+    border: 6px solid var(--white);
+    margin-bottom: 25px;
+    display: none;
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+}
+
+.active { display: block; }
+
+h1 {
+    text-align: center;
+    color: var(--serenity);
+    font-size: 3rem;
+    margin-bottom: 20px;
+    font-weight: 700;
+    text-shadow: 4px 4px 0px var(--white);
+    letter-spacing: -1px;
+    animation: float 3s ease-in-out infinite;
+    white-space: nowrap;
+}
+
+h2 { text-align: center; font-size: 1.8rem; margin-top: 0; color: var(--serenity); }
+
+input, select, textarea {
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    border: 3px solid var(--custard);
+    border-radius: 20px;
+    background: var(--white);
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--dark);
+    transition: 0.3s;
+}
+
+input:focus { border-color: var(--serenity); box-shadow: 0 0 10px rgba(245,86,155,0.2); }
+
+.btn-main {
+    background: linear-gradient(135deg, #F5569B 0%, #FFCBEB 100%);
+    color: var(--white);
+    border: 4px solid var(--white);
+    padding: 18px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 15px;
+    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0px 6px 0px #c13e7a;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+}
+
+.btn-main:hover {
+    transform: scale(1.02) translateY(-2px);
+    box-shadow: 0px 10px 0px #c13e7a;
+    filter: brightness(1.05);
+}
+
+.btn-main:active {
+    transform: translateY(4px);
+    box-shadow: 0px 2px 0px #c13e7a;
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #1355b2 0%, #3a6fd1 100%);
+    box-shadow: 0px 6px 0px #0f3f85;
+}
+
+.btn-secondary:hover { box-shadow: 0px 10px 0px #0f3f85; }
+
+/* Product Card */
+.item-card {
+    background: var(--white);
+    border-radius: 35px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+    text-align: center;
+    transition: all 0.4s ease;
+    overflow: hidden; /* IMPORTANT */
+}
+
+.item-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.12);
+}
+
+/* ===== BOUTIQUE IMAGE CONTROL (FIXED SIZE) ===== */
+
+.item-card img {
+    width: 100% !important;
+    height: 260px !important;
+    object-fit: cover !important;
+    border-radius: 25px;
+    display: block;
+    transition: transform 0.6s ease, filter 0.6s ease;
+}
+
+.item-card:hover img {
+    transform: scale(1.06);
+    filter: brightness(1.05);
+}
+
+/* ============================================== */
+
+.order-row {
+    background: var(--white);
+    border: 3px solid var(--custard);
+    border-radius: 25px;
+    padding: 18px;
+    margin-bottom: 15px;
+    box-shadow: 5px 5px 0px var(--custard);
+}
+
+.cart-thumbnail {
+    width: 55px;
+    height: 55px;
+    border: 3px solid var(--custard);
+    border-radius: 15px;
+    object-fit: cover;
+    margin-right: 12px;
+    background: #fff;
+}
+
+.status-completed-anim {
+    background: linear-gradient(135deg, #6BCB77 0%, #A7FF83 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 25px;
+    text-align: center;
+    font-weight: 700;
+    border: 4px solid var(--white);
+    animation: successPulse 2s infinite;
+    margin-bottom: 15px;
+}
+
+#cart-count {
+    background: var(--candy-yellow);
+    color: var(--dark);
+    padding: 2px 12px;
+    border-radius: 50px;
+    border: 2px solid var(--serenity);
+    margin-left: 5px;
+    font-size: 0.9rem;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.95);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-weight: 700;
+    color: var(--serenity);
+    font-size: 1.5rem;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 8px solid var(--candy-yellow);
+    border-top: 8px solid var(--serenity);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 15px;
+}
+
+label { font-weight: 700; color: var(--serenity); font-size: 0.9rem; margin-left: 10px; }
+
+</style>
+</head>
+<body>
+<div id="loading-overlay" class="overlay">
+    <div class="spinner"></div>
+    <div id="overlay-text">Candy magic... ✨</div>
+</div>
+
+<!-- Home Page -->
+<div id="page-home" class="container active">
+    <h1>My Shop</h1>
+    <button class="btn-main" onclick="showPage('page-shop')">🍭 ENTER THE SHOP</button>
+    <button class="btn-main btn-secondary" onclick="showPage('page-admin-login')">👑 SWEET ADMIN</button>
+</div>
+
+<!-- Shop Page -->
+<div id="page-shop" class="container">
+    <h2>My Shop ✨</h2>
+    <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:15px;">
+        <select id="shop-category" onchange="loadProducts()" style="margin:0;">
+            <option value="All">All Categories</option>
+            <option>Nail equipments</option>
+            <option>Lash equipments</option>
+            <option>Newborn apparel</option>
+            <option>Kids apparel</option>
+            <option>Woman apparel</option>
+            <option>Man apparel</option>
+            <option>Footwear</option>
+        </select>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="shop-search" placeholder="Search for treats..." style="margin:0;">
+            <button class="btn-main" style="width:75px; margin:0; padding:0;" onclick="loadProducts()">🍬</button>
+        </div>
+    </div>
+    <div id="shop-items"></div>
+    <button class="btn-main" onclick="showPage('page-cart')">🛒 MY BASKET <span id="cart-count">0</span></button>
+    <button class="btn-main btn-secondary" onclick="showPage('page-home')">🔙 BACK</button>
+</div>
+
+<!-- Cart Page -->
+<div id="page-cart" class="container">
+    <h2>My Basket 🛒</h2>
+    <div id="cart-items"></div>
+    <hr style="border: 2px dashed #FFC2D1; margin: 20px 0;">
+    <div style="text-align:right; font-weight:700; background: #FFF; padding: 15px; border-radius: 20px;">
+        <p style="margin:5px 0; color:var(--success); font-size: 0.9rem;">FREE SHIPPING ✨</p>
+        <p style="margin:5px 0;">COD TOTAL: ₱<span id="cart-total-items">0</span></p>
+        <p style="margin:5px 0; color:var(--serenity)">DOWNPAYMENT TOTAL: ₱<span id="cart-total-fees">0</span></p>
+    </div>
+    <button class="btn-main" style="margin-top:20px;" onclick="startCheckout()">💳 READY TO CHECKOUT</button>
+    <button class="btn-main btn-secondary" onclick="showPage('page-shop')">🔙 KEEP SHOPPING</button>
+</div>
+
+<!-- Checkout Page -->
+<div id="page-checkout" class="container">
+    <h2>Final Step 📦</h2>
+    <input type="text" id="co-name" placeholder="Full Name">
+    <input type="tel" id="co-phone" placeholder="Phone Number (11 Digits)" maxlength="11">
+    <input type="text" id="co-province" placeholder="Province / City">
+    <input type="text" id="co-municipality" placeholder="Municipality">
+    <input type="text" id="co-barangay" placeholder="Barangay">
+    <input type="text" id="co-zip" placeholder="Zip Code">
+    <textarea id="co-note" placeholder="Any special requests?"></textarea>
+   
+    <div style="background:var(--white); padding:20px; border-radius:30px; border:4px solid #FFEDF1; text-align:center; margin-bottom:15px;">
+        <b style="color:var(--dark)">SCAN TO PAY DOWNPAYMENT</b><br>
+        <img src="https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg" style="width:140px; border-radius:20px; border:3px solid #FFC2D1; margin:15px 0;">
+        <br>
+        <p style="margin: 5px 0; font-weight: 700; color: var(--serenity);">DOWNPAYMENT: ₱<span id="checkout-downpayment-val">0</span></p>
+        <p style="margin: 5px 0; font-weight: 700; color: var(--dark);">COD BALANCE: ₱<span id="checkout-cod-val">0</span></p>
+        <p style="margin-top:10px; font-weight:700; color:var(--success); font-size: 0.8rem;">FREE SHIPPING INCLUDED ✨</p>
+    </div>
+
+    <input type="text" id="co-ref" placeholder="GCash Reference Number">
+    <button class="btn-main" onclick="submitOrder()">🚀 CONFIRM ORDER</button>
+    <button class="btn-main btn-secondary" onclick="showPage('page-cart')">🔙 BACK</button>
+</div>
+
+<!-- Tracker Page -->
+<div id="page-status" class="container">
+    <h1>Order Here!</h1>
+    <input type="text" id="search-name" placeholder="Enter Registered Name">
+    <button class="btn-main" onclick="trackOrder()">FIND MY TREATS</button>
+    <div id="status-results"></div>
+    <button class="btn-main btn-secondary" onclick="showPage('page-home')">🔙 BACK</button>
+</div>
+
+<!-- Admin Login -->
+<div id="page-admin-login" class="container">
+    <h2>Sweet Login</h2>
+    <input type="email" id="admin-email" placeholder="Enter Email">
+    <input type="password" id="admin-pass" placeholder="Enter Password">
+    <button class="btn-main" onclick="adminAuth()">LOGIN 👑</button>
+    <button class="btn-main btn-secondary" onclick="showPage('page-home')">🔙 BACK</button>
+</div>
+
+
+<!-- Admin Panel -->
+<div id="page-admin-panel" class="container">
+    <h2>Dashboard</h2>
+    <button class="btn-main" onclick="toggleAdminView('upload')">➕ UPLOAD NEW</button>
+    <button class="btn-main" onclick="toggleAdminView('items'); loadInventory();">📦 MY PRODUCTS</button>
+    <button class="btn-main" onclick="toggleAdminView('orders'); loadOrders();">📋 ALL ORDERS</button>
+
+    <div id="admin-upload" style="display:none;">
+    <label>Category:</label>
+    <select id="p-category">
+        <option>Nail equipments</option>
+        <option>Lash equipments</option>
+        <option>Newborn apparel</option>
+        <option>Kids apparel</option>
+        <option>Woman apparel</option>
+        <option>Man apparel</option>
+        <option>Footwear</option>
+    </select>
+
+    <label>Product Photo (or URL):</label>
+    <input type="file" id="p-img" accept="image/*">
+    <input type="text" id="p-img-url" placeholder="Or paste Image URL here">
+
+    <input type="text" id="p-id" placeholder="ID Code">
+    <input type="text" id="p-name" placeholder="Product Name">
+    <input type="number" id="p-price" placeholder="Price (₱)">
+    <input type="number" id="p-fee" placeholder="Checkout Fee (₱)">
+    <input type="text" id="p-size" placeholder="Available Sizes">
+    <input type="text" id="p-color" placeholder="Available Colors">
+    <button class="btn-main" onclick="uploadProduct()">UPLOAD ✨</button>
+</div>
+
+
+    <div id="admin-inventory" style="display:none;">
+        <div id="edit-panel" style="display:none; border:3px dashed var(--serenity); padding:20px; border-radius:30px; margin-bottom:20px; background: #FFF;">
+            <h3 style="margin:0;">Editing Treat</h3>
+            <input type="hidden" id="edit-doc-id">
+            <select id="edit-category">
+                <option>Nail equipments</option>
+                <option>Lash equipments</option>
+                <option>Newborn apparel</option>
+                <option>Kids apparel</option>
+                <option>Woman apparel</option>
+                <option>Man apparel</option>
+                <option>Footwear</option>
+            </select>
+            <input type="text" id="edit-name" placeholder="Name">
+            <input type="number" id="edit-price" placeholder="Price">
+            <input type="number" id="edit-fee" placeholder="Fee">
+            <input type="text" id="edit-size" placeholder="Sizes">
+            <input type="text" id="edit-color" placeholder="Colors">
+            <button class="btn-main" onclick="saveEdit()">SAVE CHANGES</button>
+        </div>
+        <div id="inventory-list"></div>
+    </div>
+
+    <div id="admin-orders" style="display:none;"><div id="order-list"></div></div>
+   
+    <button class="btn-main btn-secondary" onclick="showPage('page-home')" style="margin-top:20px;">🔙 LOGOUT</button>
+</div>
+
+<script>
+
+    // SANITIZATION FUNCTION
+    function sanitize(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+    const firebaseConfig = {
+    apiKey: "AIzaSyB8Kwtx9OqBi6iHZZwaCYZwp2Utp7KFQ5Y",
+    authDomain: "myshop-c8e3a.firebaseapp.com",
+    projectId: "myshop-c8e3a",
+    storageBucket: "myshop-c8e3a.firebasestorage.app",
+    messagingSenderId: "1053857514289",
+    appId: "1:1053857514289:web:75f14ef25b9d71b2012610"
+  };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let cart = JSON.parse(localStorage.getItem('hatice_cart')) || [];
+    let globalPhotos = {};
+
+    function showOverlay(text) {
+        document.getElementById('overlay-text').innerText = text;
+        document.getElementById('loading-overlay').style.display = 'flex';
+    }
+
+    function hideOverlay() {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    function showPage(id) {
+        document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'page-shop') loadProducts();
+        if(id === 'page-cart') updateCartUI();
+        if(id === 'page-checkout') updateCheckoutSummary();
+        window.scrollTo(0,0);
+    }
+
+    function startCheckout() {
+        showOverlay("Packing your treats... 🛍️");
+        setTimeout(() => {
+            hideOverlay();
+            showPage('page-checkout');
+        }, 800);
+    }
+
+    function createSparkles(e) {
+        for(let i=0; i<12; i++) {
+            const s = document.createElement('div');
+            s.className = 'glitter';
+            s.style.left = (e.pageX + (Math.random()-0.5)*120) + 'px';
+            s.style.top = (e.pageY + (Math.random()-0.5)*120) + 'px';
+            document.body.appendChild(s);
+            setTimeout(() => s.remove(), 800);
+        }
+    }
+
+    async function adminAuth() {
+    const email = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-pass').value;
+
+    if (!email || !password) return alert("Enter email and password!");
+
+    showOverlay("Opening the vault... 👑");
+
+    try {
+        // Firebase Authentication sign in
+        await firebase.auth().signInWithEmailAndPassword(email, password);
+        hideOverlay();
+        showPage('page-admin-panel');
+    } catch (err) {
+        hideOverlay();
+        alert("Oops! " + err.message);
+    }
+}
+
+
+
+    async function uploadProduct() {
+    const file = document.getElementById('p-img').files[0];
+    const imgUrl = document.getElementById('p-img-url').value.trim();
+
+    // Check if neither file nor URL is provided
+    if (!file && !imgUrl) return alert("Select a photo or provide an image URL!");
+
+    showOverlay("Sugar coating the item... ✨");
+
+    let finalImg = "";
+
+    if (file) {
+        // --- IMAGE COMPRESSION ---
+        finalImg = await new Promise((resolve) => {
+            const img = new Image();
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = e => { img.src = e.target.result; };
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let w = img.width, h = img.height;
+                const maxDim = 800;
+                if(w > h && w > maxDim) { h *= maxDim / w; w = maxDim; }
+                else if(h > w && h > maxDim) { w *= maxDim / h; h = maxDim; }
+                else if(w === h && w > maxDim) { w = h = maxDim; }
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
+            };
+        });
+    } else {
+        // Use URL directly
+        finalImg = imgUrl;
+    }
+
+    await db.collection("products").add({
+        itemId: document.getElementById('p-id').value,
+        category: document.getElementById('p-category').value,
+        name: document.getElementById('p-name').value,
+        price: parseFloat(document.getElementById('p-price').value),
+        fee: parseFloat(document.getElementById('p-fee').value),
+        img: finalImg,
+        size: document.getElementById('p-size').value,
+        color: document.getElementById('p-color').value,
+        status: "enabled",
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    hideOverlay();
+    alert("Sweet! Uploaded!");
+    loadInventory();
+
+    // Clear inputs
+    document.getElementById('p-img').value = "";
+    document.getElementById('p-img-url').value = "";
+}
+
+
+   async function loadProducts() {
+    const div = document.getElementById('shop-items');
+    const search = document.getElementById('shop-search').value.toLowerCase().trim();
+    const category = document.getElementById('shop-category').value;
+
+    const snap = await db.collection("products")
+        .where("status", "==", "enabled")
+        .get();
+
+    div.innerHTML = "";
+
+    snap.forEach(doc => {
+        const d = doc.data();
+        globalPhotos[d.itemId] = d.img;
+
+        const matchSearch = !search || d.name.toLowerCase().includes(search);
+        const matchCat = category === "All" || d.category === category;
+
+        if (matchSearch && matchCat) {
+
+            div.innerHTML += `
+                <div class="item-card">
+                    <div class="image-wrapper">
+                        <img loading="lazy" src="${d.img}" class="shop-image">
+                    </div>
+
+                    <h3>${d.name}</h3>
+
+                    <p class="price">
+                        ₱${d.price}
+                        <span>(+₱${d.fee} fee)</span>
+                    </p>
+
+                    <select id="sz-${doc.id}">
+                        <option value="">Size</option>
+                        ${d.size.split(',').map(s => `<option>${s.trim()}</option>`).join("")}
+                    </select>
+
+                    <select id="cl-${doc.id}">
+                        <option value="">Color</option>
+                        ${d.color.split(',').map(c => `<option>${c.trim()}</option>`).join("")}
+                    </select>
+
+                    <label>Quantity:</label>
+                    <input type="number" id="qty-${doc.id}" value="1" min="1" placeholder="Qty" class="qty-input">
+
+                    <button class="btn-main"
+                        onclick="addToCart(event, '${doc.id}', '${d.itemId}', ${d.price}, ${d.fee}, '${d.name.replace(/'/g, "\\'")}')">
+                        ADD TO CART 🍭
+                    </button>
+                </div>
+            `;
+        }
+    });
+}
+
+    function addToCart(e, docId, itemId, price, fee, name) {
+        const sz = document.getElementById(`sz-${docId}`).value,
+              cl = document.getElementById(`cl-${docId}`).value,
+              qty = parseInt(document.getElementById(`qty-${docId}`).value);
+
+        if(!sz || !cl || qty < 1) return alert("Pick your size and color!");
+       
+        createSparkles(e);
+        cart.push({ itemId, name, sz, cl, qty, price, fee });
+        localStorage.setItem('hatice_cart', JSON.stringify(cart));
+        document.getElementById('cart-count').innerText = cart.length;
+    }
+
+    function updateCartUI() {
+        const div = document.getElementById('cart-items');
+        let tP = 0, tF = 0;
+        div.innerHTML = cart.length ? cart.map((i, idx) => {
+            tP += (i.price * i.qty);
+            tF += (i.fee * i.qty);
+            return `<div class="order-row" style="display:flex; align-items:center;">
+                <img src="${globalPhotos[i.itemId]}" class="cart-thumbnail">
+                <div><b style="color:var(--serenity)">${i.name}</b> (x${i.qty})<br><small>${i.sz} | ${i.cl}</small></div>
+                <button onclick="createSparkles(event); cart.splice(${idx},1); updateCartUI();" style="margin-left:auto; border:none;background:none;color:#FF4D6D;font-weight:700; font-size:1.2rem;">✖</button>
+            </div>`;
+        }).join('') : "<p style='text-align:center;'>Your basket is empty! 🧸</p>";
+       
+        document.getElementById('cart-total-items').innerText = tP;
+        document.getElementById('cart-total-fees').innerText = tF;
+        document.getElementById('cart-count').innerText = cart.length;
+    }
+
+    function updateCheckoutSummary() {
+        let tP = 0, tF = 0;
+        cart.forEach(i => { tP += (i.price * i.qty); tF += (i.fee * i.qty); });
+        document.getElementById('checkout-downpayment-val').innerText = tF;
+        document.getElementById('checkout-cod-val').innerText = tP;
+    }
+
+    async function submitOrder() {
+        if(cart.length === 0) return alert("Your basket is empty!");
+        const ref = document.getElementById('co-ref').value.trim();
+        if(!ref) return alert("Please input the GCash Reference Number for your downpayment!");
+
+        showOverlay("Sending your treats... 🚀");
+        let tP = 0, tF = 0;
+        cart.forEach(i => { tP += (i.price * i.qty); tF += (i.fee * i.qty); });
+
+        await db.collection("orders").add({
+            name: document.getElementById('co-name').value.toLowerCase().trim(),
+            phone: document.getElementById('co-phone').value,
+            payment: "Downpayment via GCash",
+            address: `${document.getElementById('co-province').value}, ${document.getElementById('co-municipality').value}, ${document.getElementById('co-barangay').value}`,
+            zip: document.getElementById('co-zip').value,
+            ref: ref,
+            note: document.getElementById('co-note').value,
+            items: cart,
+            totalP: tP,
+            totalF: tF,
+            status: "Pending",
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        hideOverlay();
+        localStorage.removeItem('hatice_cart');
+        cart=[];
+        location.reload();
+    }
+
+    async function trackOrder() {
+        const name = document.getElementById('search-name').value.toLowerCase().trim();
+        if(!name) return;
+        showOverlay("Searching for Treats... 🔍");
+        const snap = await db.collection("orders").where("name", "==", name).get();
+        const res = document.getElementById('status-results');
+        res.innerHTML = "";
+       
+        const pSnap = await db.collection("products").get();
+        pSnap.forEach(p => globalPhotos[p.data().itemId] = p.data().img);
+
+        hideOverlay();
+        if(snap.empty) {
+            res.innerHTML = "<p style='text-align:center;'>No orders found for this name. 🧸</p>";
+            return;
+        }
+
+        snap.forEach(doc => {
+            const o = doc.data();
+            const items = o.items.map(i => `<div style="display:flex;align-items:center;margin-bottom:10px; font-size:0.85rem;"><img src="${globalPhotos[i.itemId]}" class="cart-thumbnail" style="width:35px;height:35px;"><span><b>${i.name}</b> (x${i.qty}) - ${i.sz}/${i.cl}</span></div>`).join('');
+            res.innerHTML += `
+                <div class="order-row">
+                    ${o.status === 'Completed' ? '<div class="status-completed-anim">💖 ORDER COMPLETED 💖</div>' : '<div style="text-align:center;padding:12px;background:#FFEDF1;border-radius:15px; font-weight:700; color:var(--serenity);">⏳ STATUS: PENDING</div>'}
+                    <div style="font-size:0.85rem; padding:10px;">
+                        <p><b>Admin Note:</b> ${o.adminNote || 'Verifying your sweet order...'}</p>
+                        <hr style="border:1px dashed #FFC2D1"><b>Order Summary:</b><br>${items}
+                        <hr style="border:1px dashed #FFC2D1">
+                        <p><b>Downpayment Ref:</b> ${o.ref}</p>
+                        <p><b>COD BALANCE:</b> ₱${o.totalP}</p>
+                        <p><b>Address:</b> ${o.address} (${o.zip})</p>
+                    </div>
+                    <button onclick="deleteDoc('${doc.id}', 'track')" style="background:none; border:none; color:#FF4D6D; font-size:0.75rem; margin-top:5px; width:100%; cursor:pointer; font-weight:700;">🗑️ REMOVE FROM MY LIST</button>
+                </div>`;
+        });
+    }
+
+    async function loadInventory() {
+        const div = document.getElementById('inventory-list');
+        const snap = await db.collection("products").orderBy("timestamp", "desc").get();
+        div.innerHTML = "";
+        snap.forEach(doc => {
+            const p = doc.data();
+            const en = p.status === "enabled";
+            div.innerHTML += `<div class="order-row" style="display:flex;align-items:center;gap:10px;"><img src="${p.img}" class="cart-thumbnail" style="width:40px;height:40px;"><div style="flex:1"><b>${p.name}</b><br><small>${p.category || 'No Category'}</small></div><div><button onclick="openEdit('${doc.id}', '${p.name.replace(/'/g, "\\'")}', ${p.price}, ${p.fee}, '${p.size}', '${p.color}', '${p.category}')">EDIT</button><button onclick="toggleProd('${doc.id}', '${p.status}')" style="background:${en?'var(--candy-blue)':'#ccc'}">${en?'HIDE':'SHOW'}</button><button onclick="deleteDoc('${doc.id}', 'inv')" style="color:#FF4D6D; border:none; background:none; font-weight:700;">DEL</button></div></div>`;
+        });
+    }
+
+    async function markDone(id) {
+        const n = document.getElementById(`note-${id}`).value.trim();
+        if(!n) return alert("Provide a tracking number first!");
+        showOverlay("Wrapping it up... 🎁");
+        await db.collection("orders").doc(id).update({ status: "Completed", adminNote: n });
+        hideOverlay();
+        loadOrders();
+    }
+
+    async function deleteDoc(id, type) {
+        if(!confirm("Are you sure? This cannot be undone!")) return;
+        showOverlay("Deleting... 🗑️");
+        const col = (type === 'inv') ? "products" : "orders";
+        await db.collection(col).doc(id).delete();
+        hideOverlay();
+        if(type === 'inv') loadInventory(); else trackOrder();
+    }
+
+    function openEdit(id, n, p, f, s, c, cat) {
+        document.getElementById('edit-panel').style.display='block';
+        document.getElementById('edit-doc-id').value=id;
+        document.getElementById('edit-name').value=n;
+        document.getElementById('edit-price').value=p;
+        document.getElementById('edit-fee').value=f;
+        document.getElementById('edit-size').value=s;
+        document.getElementById('edit-color').value=c;
+        document.getElementById('edit-category').value=cat || 'Nail equipments';
+    }
+
+    async function saveEdit() {
+        showOverlay("Saving treats... 💾");
+        await db.collection("products").doc(document.getElementById('edit-doc-id').value).update({
+            name: document.getElementById('edit-name').value,
+            price: parseFloat(document.getElementById('edit-price').value),
+            fee: parseFloat(document.getElementById('edit-fee').value),
+            size: document.getElementById('edit-size').value,
+            color: document.getElementById('edit-color').value,
+            category: document.getElementById('edit-category').value
+        });
+        hideOverlay();
+        document.getElementById('edit-panel').style.display='none';
+        loadInventory();
+    }
+
+    async function toggleProd(id, s) {
+        await db.collection("products").doc(id).update({ status: s==="enabled"?"disabled":"enabled" });
+        loadInventory();
+    }
+
+    async function loadOrders() {
+        const div = document.getElementById('order-list');
+        div.innerHTML = "Loading...";
+        const pSnap = await db.collection("products").get();
+        pSnap.forEach(p => globalPhotos[p.data().itemId] = p.data().img);
+       
+        const snap = await db.collection("orders").orderBy("timestamp", "desc").get();
+        div.innerHTML = "";
+        snap.forEach(doc => {
+            const o = doc.data();
+            const isDone = o.status === "Completed";
+            const items = o.items.map(i => `<div style="display:flex;align-items:center;margin-bottom:5px;background:#FFF;padding:8px;border-radius:15px; border:1px solid #FFEDF1;"><img src="${globalPhotos[i.itemId] || ''}" class="cart-thumbnail"><div><b>${i.name}</b> (x${i.qty})<br><small>${i.sz} / ${i.cl}</small></div></div>`).join('');
+            div.innerHTML += `
+                <div class="order-row" style="border-left:12px solid ${isDone?'#6BCB77':'#FF85A1'}">
+                    <b style="color:var(--serenity)">👤 ${o.name.toUpperCase()}</b><br>
+                    <div style="font-size:0.8rem; margin-top:5px;">
+                        <p>📱 ${o.phone} | 💳 Downpayment Ref: ${o.ref}</p>
+                        <p>📍 ${o.address} (Zip: ${o.zip})</p>
+                        <p>💬 Note: ${o.note || 'N/A'}</p>
+                    </div>
+                    <hr style="border:1px dashed #FFC2D1">${items}<hr style="border:1px dashed #FFC2D1">
+                    <p><b>💰 COD BALANCE: ₱${o.totalP} | DOWNPAYMENT: ₱${o.totalF}</b></p>
+                    ${isDone ? `<p><b>Tracking:</b> ${o.adminNote}</p>` : `
+                        <textarea id="note-${doc.id}" placeholder="Type Tracking # (Mandatory Note)"></textarea>
+                        <button class="btn-main" onclick="markDone('${doc.id}')" style="margin:0; padding:10px;">MARK AS DONE 🍬</button> `}
+                    <button onclick="deleteDoc('${doc.id}', 'order')" style="color:#FF4D6D; border:none; background:none; font-size:0.75rem; margin-top:10px; cursor:pointer; font-weight:700;">🗑️ DELETE RECORD</button>
+                </div>`;
+        });
+    }
+
+    function toggleAdminView(v) {
+        document.getElementById('admin-upload').style.display = v === 'upload' ? 'block' : 'none';
+        document.getElementById('admin-inventory').style.display = v === 'items' ? 'block' : 'none';
+        document.getElementById('admin-orders').style.display = v === 'orders' ? 'block' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('cart-count').innerText = cart.length;
+    });
+</script>
+
+</body>
+</html>
+
+
+
+
